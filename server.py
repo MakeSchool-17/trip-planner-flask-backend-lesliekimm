@@ -10,31 +10,32 @@ mongo = MongoClient('localhost', 27017)
 app.db = mongo.develop_database
 api = Api(app)
 
-#Implement REST Resource
+
+# Implement REST Resource
 class MyObject(Resource):
-
     def post(self):
-      new_myobject = request.json
-      myobject_collection = app.db.myobjects
-      result = myobject_collection.insert_one(request.json)
+        new_myobject = request.json
+        myobject_collection = app.db.myobjects
+        result = myobject_collection.insert_one(request.json)
 
-      myobject = myobject_collection.find_one({"_id": ObjectId(result.inserted_id)})
+        myobject = myobject_collection.find_one(
+            {"_id": ObjectId(result.inserted_id)})
 
-      return myobject
-
-    def get(self, myobject_id):
-      myobject_collection = app.db.myobjects
-      myobject = myobject_collection.find_one({"_id": ObjectId(myobject_id)})
-
-      if myobject is None:
-        response = jsonify(data=[])
-        response.status_code = 404
-        return response
-      else:
         return myobject
 
+    def get(self, myobject_id):
+        myobject_collection = app.db.myobjects
+        myobject = myobject_collection.find_one({"_id": ObjectId(myobject_id)})
+
+        if myobject is None:
+            response = jsonify(data=[])
+            response.status_code = 404
+            return response
+        else:
+            return myobject
+
 # Add REST resource to API
-api.add_resource(MyObject, '/myobject/','/myobject/<string:myobject_id>')
+api.add_resource(MyObject, '/myobject/', '/myobject/<string:myobject_id>')
 
 # provide a custom JSON serializer for flaks_restful
 @api.representation('application/json')
@@ -44,6 +45,7 @@ def output_json(data, code, headers=None):
     return resp
 
 if __name__ == '__main__':
-    # Turn this on in debug mode to get detailled information about request related exceptions: http://flask.pocoo.org/docs/0.10/config/
+    # Turn this on in debug mode to get detailled information about request
+    # related exceptions: http://flask.pocoo.org/docs/0.10/config/
     app.config['TRAP_BAD_REQUEST_ERRORS'] = True
     app.run(debug=True)
