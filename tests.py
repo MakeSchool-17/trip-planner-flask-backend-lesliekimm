@@ -18,33 +18,55 @@ class FlaskrTestCase(unittest.TestCase):
         # Drop collection (significantly faster than dropping entire db)
         db.drop_collection('myobjects')
 
-    # MyObject tests
-    def test_posting_myobject(self):
-        response = self.app.post('/myobject/', data=json.dumps(dict(
-            name="A object")), content_type='application/json')
+    # Trip tests
+    def test_post(self):
+        response = self.app.post('/trip/', data=json.dumps(dict(
+            name="San Fran", waypoints=[])),
+            content_type='application/json')
 
         responseJSON = json.loads(response.data.decode())
 
         self.assertEqual(response.status_code, 200)
         assert 'application/json' in response.content_type
-        assert 'A object' in responseJSON["name"]
+        assert 'San Fran' in responseJSON["name"]
+        self.assertEqual(0, len(responseJSON["waypoints"]))
 
-    def test_getting_trip(self):
-        response = self.app.post('/myobject/', data=json.dumps(dict(
-            name="Another object")), content_type='application/json')
+    def test_get(self):
+        response = self.app.post('/trip/', data=json.dumps(dict(
+            name="Cross country", waypoints=[])),
+            content_type='application/json')
 
         postResponseJSON = json.loads(response.data.decode())
         postedObjectID = postResponseJSON["_id"]
 
-        response = self.app.get('/myobject/'+postedObjectID)
+        response = self.app.get('/trip/'+postedObjectID)
         responseJSON = json.loads(response.data.decode())
 
         self.assertEqual(response.status_code, 200)
-        assert 'Another object' in responseJSON["name"]
+        assert 'Cross country' in responseJSON["name"]
+        self.assertEquals(0, len(responseJSON["waypoints"]))
 
-    def test_getting_non_existent_trip(self):
-        response = self.app.get('/myobject/55f0cbb4236f44b7f0e3cb23')
+    def test_get_nonexistent_trip(self):
+        response = self.app.get('/trip/55f0cbb4236f44b7f0e3cb23')
         self.assertEqual(response.status_code, 404)
+
+    def test_put(self):
+        response = self.app.post('/trip/', data=json.dumps(dict(
+            name="Hello", waypoints=[])),
+            content_type='application/json')
+
+        postResponseJSON = json.loads(response.data.decode())
+        postedObjectID = postResponseJSON["_id"]
+
+        response = self.app.put('/trip/'+postedObjectID)
+        responseJSON = json.loads(response.data.decode())
+
+        self.assertEqual(response.satus_code, 200)
+        assert 'San Fran' in responseJSON["name"]
+        self.assertEquals(1, len(responseJSON["waypoints"]))
+
+    def test_delete(self):
+        pass
 
 if __name__ == '__main__':
     unittest.main()
