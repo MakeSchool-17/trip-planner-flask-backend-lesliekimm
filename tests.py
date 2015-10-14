@@ -44,29 +44,47 @@ class FlaskrTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         assert 'Cross country' in responseJSON['name']
-        self.assertEquals(0, len(responseJSON['waypoints']))
+        self.assertEqual(0, len(responseJSON['waypoints']))
 
     def test_get_nonexistent_trip(self):
         response = self.app.get('/trip/55f0cbb4236f44b7f0e3cb23')
         self.assertEqual(response.status_code, 404)
 
+    def test_get_no_id(self):
+        response = self.app.get('/trip/')
+        self.assertEqual(response.status_code, 404)
+
     def test_put(self):
         response = self.app.post('/trip/', data=json.dumps(dict(
-            name='Hello', waypoints=[])),
+            name='San Fran', waypoints=[])),
             content_type='application/json')
 
         postResponseJSON = json.loads(response.data.decode())
-        postedObjectID = postResponseJSON["_id"]
+        postedObjectID = postResponseJSON['_id']
 
-        response = self.app.put('/trip/'+postedObjectID)
+        response = self.app.put('/trip/'+postedObjectID, data=json.dumps(
+            dict(name='BOING',
+                 waypoints=['mission', 'soma', 'nob hill'])),
+                 content_type='application/json')
         responseJSON = json.loads(response.data.decode())
 
         self.assertEqual(response.status_code, 200)
-        assert 'Hello' in responseJSON['name']
-        self.assertEquals(1, len(responseJSON['waypoints']))
+        assert 'BOING' in responseJSON['name']
+        self.assertEqual(3, len(responseJSON['waypoints']))
 
     def test_delete(self):
-        pass
+        response = self.app.post('/trip/', data=json.dumps(dict(
+            name='San Fran',
+            waypoints=['russian hill', 'pac heights', 'sunset'])),
+            content_type='application/json')
+
+        postResponseJSON = json.loads(response.data.decode())
+        postedObjectID = postResponseJSON['_id']
+
+        del_response = self.app.delete('/trip/'+postedObjectID)
+
+        self.assertEqual(del_response.status_code, 200)
+
 
 if __name__ == '__main__':
     unittest.main()

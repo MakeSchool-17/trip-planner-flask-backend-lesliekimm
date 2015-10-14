@@ -3,6 +3,8 @@ from flask_restful import Resource, Api
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from utils.mongo_json_encoder import JSONEncoder
+from functools import wraps
+from bcyrpt import hashpw, gensalt
 
 # basic setup
 app = Flask(__name__)                       # create flask instance
@@ -13,51 +15,48 @@ app.db = mongo.develop_database             # specify DB to store data
 api = Api(app)
 
 
+# check_auth method decides whether user provided valid credentials
+def check_auth(username, password):
+    # THIS IS DUMMY IMPLEMENTATION - REPLACE
+    hashed_pw = hashpw(password, gensalt(log_rounds=12))
+    # if hashed_pw == stored hashed pw
+    return username == 'admin' and password == 'secret'
+
+
+# defines a wrapper that will check authentication header of an incoming request
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # first reads auth header by accessing request.authorization
+        auth = request.authorization
+        # checks if header was provided
+        # if header provided, passes deatils to check_auth method
+        # check_auth method decides whether user provided valid credentials
+        # if auth not successful, return 401 response
+        if not auth or not check_auth(auth.username, auth.password):
+            message = {'error': 'Basic Auth Required.'}
+            resp = jsonify(message)
+            resp.status_code = 401
+            return resp
+
+        # if auth successful, wrapped function will be called as usual
+        return f(*args, **kwargs)
+    return decorated
+
+
 # implement REST Resource
 # most apps will defined one resource for each entity that can be stored in app
 # resource implements one method for each HTTP verb that is supported
-class MyObject(Resource):
+class Trip(Resource):
     # invoked to create a new instance of MyObject on the server
     # client that calls this endpt provides a JSON body as part of HTTP request
     def post(self):
         # access JSON that client provides
-        new_myobject = request.json
+        trip = request.json
         # access collection where we will store new object
         # typically, one collection per entity
-        myobject_collection = app.db.myobjects
-        # insert JSON document into collection
-        result = myobject_collection.insert_one(new_myobject)
-        # retrieve the result - use the result to fetch inserted doc from the
-        # collection using the find_one method
-        # find_one takes a dictionary that describers filter criteria for docs
-        myobject = myobject_collection.find_one(
-            {"_id": ObjectId(result.inserted_id)})
-        # return selected doc to client
-        return myobject
-
-    def get(self, myobject_id):
-        # reference my_collection to select the doc that client is trying to
-        # access
-        myobject_collection = app.db.myobjects
-        # build a query based on my_objet_id that we recieved as poart of
-        # client's request
-        myobject = myobject_collection.find_one({"_id": ObjectId(myobject_id)})
-
-        # if doc w/ provided id isn't found, return a 404 statement, else
-        # return doc to client
-        if myobject is None:
-            response = jsonify(data=[])
-            response.status_code = 404
-            return response
-        else:
-            return myobject
-
-
-class Trip(Resource):
-    # create an instance of Trip - trip with waypoints
-    def post(self, trip_id=None):
-        trip = request.json
         trip_collection = app.db.trips
+        # insert JSON document into collection
         result = trip_collection.insert_one(trip)   # inserting doc
         # retrieve the result of inserting doc & use to fetch inserted doc
         # from the collection using find_one - takes a dictionary that
@@ -65,15 +64,21 @@ class Trip(Resource):
         # auto maintained by MongoDB & stores unique ID for each doc stored
         # we wrap result.inserted_id into TripId type - not a string!
         my_trip = trip_collection.find_one(
-            {"_id": ObjectId(result.inserted_id)})
-
+            {'_id': ObjectId(result.inserted_id)})
+        # return selected doc to client
         return my_trip
 
     # retrieve a Trip instance
     def get(self, trip_id=None):
+        # reference my_collection to select the doc that client is trying to
+        # access
         trip_collection = app.db.trips
-        trip = trip_collection.find_one({"_id": ObjectId(trip_id)})
+        # build a query based on my_objet_id that we recieved as poart of
+        # client's request
+        trip = trip_collection.find_one({'_id': ObjectId(trip_id)})
 
+        # if doc w/ provided id isn't found, return a 404 statement, else
+        # return doc to client
         if trip is None:
             response = jsonify(data=[])
             response.status_code = 404
@@ -85,29 +90,48 @@ class Trip(Resource):
     def put(self, trip_id):
         trip_update = request.json
         trip_collection = app.db.trips
-        print(trip_update)
-        print(trip_id)
 
-        result = trip_collection.update_one(
-            {'_id': trip_id}, {'$set': {'name': 'San Fran',
-             'waypoints': ['mission', 'soma', 'nob hill']}}, upsert=False)
+        result = trip_collection.update_one({'_id': ObjectId(trip_id)},
+                                            {'$set': trip_update})
+        updated = trip_collection.find_one({'_id': ObjectId(trip_id)})
 
-        # UPDATE - check pymongo documentation
-        return result
+        return updated
 
     # delete a Trip
     def delete(self, trip_id):
         trip_collection = app.db.trips
 
-        # DELETE - check pymongo documentation
-        return
+        result = trip_collection.delete_one({'_id': ObjectId(trip_id)})
+        deleted_trip = trip_collection.find_one({'_id': ObjectId(trip_id)})
+
+        if deleted_trip is not None:
+            response = jsonify(data=deleted_trip)
+            response.status_code = 404
+            return response
+        else:
+            return deleted_trip
+
+
+class User(Resource):
+    def post(self):
+        user = request.json
+        user_collection = app.db.users
+        result = user_collection.insert_one(user)   # inserting doc
+        my_user = user_collection.find_one(
+            {'_id': ObjectId(result.inserted_id)})
+
+        return my_user
+
+    @requires_auth
+    def get(self):
+        pass
 
 # add REST resource to API by mapping btw routes and resources
 # a route defines a URL that can be called by a client app
 # first param is resource we want to map to a specific URL
 # next are collection of endpts
-api.add_resource(MyObject, '/myobject/', '/myobject/<string:myobject_id>')
 api.add_resource(Trip, '/trip/', '/trip/<string:trip_id>')
+api.add_resource(User, '/user/', '/user/<string:user_id>')
 
 # provide a custom JSON serializer for flaks_restful
 @api.representation('application/json')
