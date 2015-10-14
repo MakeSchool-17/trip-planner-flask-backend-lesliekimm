@@ -20,7 +20,7 @@ class FlaskrTestCase(unittest.TestCase):
 
     # Trip tests
     def test_post(self):
-        response = self.app.post('/trip/', data=json.dumps(dict(
+        response = self.app.post('/trips/', data=json.dumps(dict(
             name='San Fran', waypoints=[])),
             content_type='application/json')
 
@@ -32,14 +32,14 @@ class FlaskrTestCase(unittest.TestCase):
         self.assertEqual(0, len(responseJSON['waypoints']))
 
     def test_get(self):
-        response = self.app.post('/trip/', data=json.dumps(dict(
+        response = self.app.post('/trips/', data=json.dumps(dict(
             name='Cross country', waypoints=[])),
             content_type='application/json')
 
         postResponseJSON = json.loads(response.data.decode())
         postedObjectID = postResponseJSON['_id']
 
-        response = self.app.get('/trip/'+postedObjectID)
+        response = self.app.get('/trips/'+postedObjectID)
         responseJSON = json.loads(response.data.decode())
 
         self.assertEqual(response.status_code, 200)
@@ -47,22 +47,22 @@ class FlaskrTestCase(unittest.TestCase):
         self.assertEqual(0, len(responseJSON['waypoints']))
 
     def test_get_nonexistent_trip(self):
-        response = self.app.get('/trip/55f0cbb4236f44b7f0e3cb23')
+        response = self.app.get('/trips/55f0cbb4236f44b7f0e3cb23')
         self.assertEqual(response.status_code, 404)
 
     def test_get_no_id(self):
-        response = self.app.get('/trip/')
+        response = self.app.get('/trips/')
         self.assertEqual(response.status_code, 404)
 
     def test_put(self):
-        response = self.app.post('/trip/', data=json.dumps(dict(
+        response = self.app.post('/trips/', data=json.dumps(dict(
             name='San Fran', waypoints=[])),
             content_type='application/json')
 
         postResponseJSON = json.loads(response.data.decode())
         postedObjectID = postResponseJSON['_id']
 
-        response = self.app.put('/trip/'+postedObjectID, data=json.dumps(
+        response = self.app.put('/trips/'+postedObjectID, data=json.dumps(
             dict(name='BOING',
                  waypoints=['mission', 'soma', 'nob hill'])),
                  content_type='application/json')
@@ -73,7 +73,7 @@ class FlaskrTestCase(unittest.TestCase):
         self.assertEqual(3, len(responseJSON['waypoints']))
 
     def test_delete(self):
-        response = self.app.post('/trip/', data=json.dumps(dict(
+        response = self.app.post('/trips/', data=json.dumps(dict(
             name='San Fran',
             waypoints=['russian hill', 'pac heights', 'sunset'])),
             content_type='application/json')
@@ -81,9 +81,17 @@ class FlaskrTestCase(unittest.TestCase):
         postResponseJSON = json.loads(response.data.decode())
         postedObjectID = postResponseJSON['_id']
 
-        del_response = self.app.delete('/trip/'+postedObjectID)
+        del_response = self.app.delete('/trips/'+postedObjectID)
 
         self.assertEqual(del_response.status_code, 200)
+
+    # User tests
+    def test_post_user(self):
+        response = self.app.post('/users/', data=json.dumps(dict(
+                                 un='lesliekimm', password='password')),
+                                 content_type='application/json')
+
+        print('RESPONSE', response)
 
 
 if __name__ == '__main__':

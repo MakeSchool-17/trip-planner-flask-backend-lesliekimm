@@ -4,7 +4,8 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from utils.mongo_json_encoder import JSONEncoder
 from functools import wraps
-from bcyrpt import hashpw, gensalt
+from bcrypt import hashpw, gensalt
+import bcrypt
 
 # basic setup
 app = Flask(__name__)                       # create flask instance
@@ -13,6 +14,8 @@ app.db = mongo.develop_database             # specify DB to store data
 # create instance of flask_restful API to add diff endpts to this API
 # provides specific format for defining endpts fro diff resources in our app
 api = Api(app)
+# configure work factor to speed up tests
+app.bcrypt_rounds = 12
 
 
 # check_auth method decides whether user provided valid credentials
@@ -70,7 +73,7 @@ class Trip(Resource):
 
     # retrieve a Trip instance
     def get(self, trip_id=None):
-        # reference my_collection to select the doc that client is trying to
+        # reference trip_collection to select the doc that client is trying to
         # access
         trip_collection = app.db.trips
         # build a query based on my_objet_id that we recieved as poart of
@@ -114,13 +117,14 @@ class Trip(Resource):
 
 class User(Resource):
     def post(self):
-        user = request.json
-        user_collection = app.db.users
-        result = user_collection.insert_one(user)   # inserting doc
-        my_user = user_collection.find_one(
-            {'_id': ObjectId(result.inserted_id)})
-
-        return my_user
+        user = request.json                     # request json doc
+        user_collection = app.db.users          # collection to store users
+        encoded_pw = user['password'].encode('utf-8')       # encode password
+        hashed_pw = bcrypt.hashpw(encoded_pw,               # hash password
+                                  bcrypt.gensalt(app.bcrypt_rounds))
+        user['password'] = hashed_pw                        # update pasword
+        result = user_collection.insert_one(user)           # inserting doc
+        return
 
     @requires_auth
     def get(self):
@@ -130,8 +134,8 @@ class User(Resource):
 # a route defines a URL that can be called by a client app
 # first param is resource we want to map to a specific URL
 # next are collection of endpts
-api.add_resource(Trip, '/trip/', '/trip/<string:trip_id>')
-api.add_resource(User, '/user/', '/user/<string:user_id>')
+api.add_resource(Trip, '/trips/', '/trips/<string:trip_id>')
+api.add_resource(User, '/users/', '/users/<string:user_id>')
 
 # provide a custom JSON serializer for flaks_restful
 @api.representation('application/json')
