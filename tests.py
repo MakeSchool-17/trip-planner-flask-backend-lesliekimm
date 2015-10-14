@@ -65,7 +65,7 @@ class FlaskrTestCase(unittest.TestCase):
         response = self.app.put('/trips/'+postedObjectID, data=json.dumps(
             dict(name='BOING',
                  waypoints=['mission', 'soma', 'nob hill'])),
-                 content_type='application/json')
+            content_type='application/json')
         responseJSON = json.loads(response.data.decode())
 
         self.assertEqual(response.status_code, 200)

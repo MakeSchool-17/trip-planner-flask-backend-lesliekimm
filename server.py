@@ -11,11 +11,8 @@ import bcrypt
 app = Flask(__name__)                       # create flask instance
 mongo = MongoClient('localhost', 27017)     # establish connection to local MDB
 app.db = mongo.develop_database             # specify DB to store data
-# create instance of flask_restful API to add diff endpts to this API
-# provides specific format for defining endpts fro diff resources in our app
-api = Api(app)
-# configure work factor to speed up tests
-app.bcrypt_rounds = 12
+api = Api(app)                              # create flask_RESTful API instance
+app.bcrypt_rounds = 12                      # config work factor for fast tests
 
 
 # check_auth method decides whether user provided valid credentials
@@ -26,7 +23,7 @@ def check_auth(username, password):
     return username == 'admin' and password == 'secret'
 
 
-# defines a wrapper that will check authentication header of an incoming request
+# define wrapper that checks authentication header of an incoming request
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -47,74 +44,66 @@ def requires_auth(f):
     return decorated
 
 
-# implement REST Resource
-# most apps will defined one resource for each entity that can be stored in app
-# resource implements one method for each HTTP verb that is supported
+# implement REST resources
+# Trip class can POST (create a new Trip with waypoints), GET (return a
+# collection of Trips or one Trip), PUT (update a collection of Trips or one
+# Trip) and DELETE (delete a Trip with waypoints)
 class Trip(Resource):
-    # invoked to create a new instance of MyObject on the server
-    # client that calls this endpt provides a JSON body as part of HTTP request
+    # POST creates a new Trip instance with waypoints - must sent JSON doc
     def post(self):
-        # access JSON that client provides
-        trip = request.json
-        # access collection where we will store new object
-        # typically, one collection per entity
-        trip_collection = app.db.trips
-        # insert JSON document into collection
-        result = trip_collection.insert_one(trip)   # inserting doc
-        # retrieve the result of inserting doc & use to fetch inserted doc
-        # from the collection using find_one - takes a dictionary that
-        # describes filter criteria for our dogs (i.e. _id) the _id field is
-        # auto maintained by MongoDB & stores unique ID for each doc stored
-        # we wrap result.inserted_id into TripId type - not a string!
-        my_trip = trip_collection.find_one(
-            {'_id': ObjectId(result.inserted_id)})
-        # return selected doc to client
-        return my_trip
+        trip = request.json                 # access JSON passed in
+        trip_collection = app.db.trips      # access collection to store obj
+        result = trip_collection.insert_one(trip)   # insert JSON doc in coll
+        my_trip = trip_collection.find_one(         # retrieve result &
+            {'_id': ObjectId(result.inserted_id)})  # fetch inserted doc
+        return my_trip                      # return selected doc to client
 
-    # retrieve a Trip instance
+    # GET retrieves a collection of Trips or specific Trip if trip_id specified
     def get(self, trip_id=None):
-        # reference trip_collection to select the doc that client is trying to
-        # access
-        trip_collection = app.db.trips
-        # build a query based on my_objet_id that we recieved as poart of
-        # client's request
+        trip_collection = app.db.trips      # ref trip_collection
+        # access coll if no trip_id specificed, or specific Trip if provided
         trip = trip_collection.find_one({'_id': ObjectId(trip_id)})
 
-        # if doc w/ provided id isn't found, return a 404 statement, else
-        # return doc to client
+        # return 404 if trip_id Trip isn't found, or Trip if found
         if trip is None:
-            response = jsonify(data=[])
-            response.status_code = 404
-            return response
+            response = jsonify(data=[])     # set data to return to empty array
+            response.status_code = 404      # set status_code to 404
+            return response                 # return response
         else:
-            return trip
+            return trip                     # return trip if found
 
-    # update a Trip
-    def put(self, trip_id):
-        trip_update = request.json
-        trip_collection = app.db.trips
+    # PUT updates a collection of Trips or specific Trip if trip_id specified
+    def put(self, trip_id=None):
+        trip_update = request.json          # access JSON passed in
+        trip_collection = app.db.trips      # access collection of Trips
 
-        result = trip_collection.update_one({'_id': ObjectId(trip_id)},
-                                            {'$set': trip_update})
+        # find the trip_id passed in and update using $set
+        trip_collection.update_one({'_id': ObjectId(trip_id)},
+                                   {'$set': trip_update})
+        # retrieve the updated Trip
         updated = trip_collection.find_one({'_id': ObjectId(trip_id)})
-
-        return updated
+        return updated                      # return updated Trip doc
 
     # delete a Trip
     def delete(self, trip_id):
-        trip_collection = app.db.trips
-
-        result = trip_collection.delete_one({'_id': ObjectId(trip_id)})
+        trip_collection = app.db.trips      # access collection of Trips
+        # delete Trip of specified trip_id
+        trip_collection.delete_one({'_id': ObjectId(trip_id)})
+        # retrieve delted Trip doc
         deleted_trip = trip_collection.find_one({'_id': ObjectId(trip_id)})
 
+        # return 404 if deleted_trip is not None, else return deleted_trip
         if deleted_trip is not None:
-            response = jsonify(data=deleted_trip)
-            response.status_code = 404
-            return response
+            response = jsonify(data=deleted_trip)   # set data to deleted_trip
+            response.status_code = 404              # set response to 404
+            return response                         # return response
         else:
-            return deleted_trip
+            return deleted_trip                     # return deleted_trip
 
 
+# User class can POST (create a new user which will store username and hashed
+# password) and GET (which requires authentication to retrieve all Trips for
+# a specific User)
 class User(Resource):
     def post(self):
         user = request.json                     # request json doc
@@ -124,10 +113,13 @@ class User(Resource):
                                   bcrypt.gensalt(app.bcrypt_rounds))
         user['password'] = hashed_pw                        # update pasword
         result = user_collection.insert_one(user)           # inserting doc
+        # my_user = user_collection.find_one(
+            # {'_id': ObjectId(result.inserted_id)})
+
         return
 
     @requires_auth
-    def get(self):
+    def get(self, user_id):
         pass
 
 # add REST resource to API by mapping btw routes and resources
@@ -136,6 +128,7 @@ class User(Resource):
 # next are collection of endpts
 api.add_resource(Trip, '/trips/', '/trips/<string:trip_id>')
 api.add_resource(User, '/users/', '/users/<string:user_id>')
+
 
 # provide a custom JSON serializer for flaks_restful
 @api.representation('application/json')
