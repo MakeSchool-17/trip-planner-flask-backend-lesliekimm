@@ -5,7 +5,6 @@ from bson.objectid import ObjectId
 from utils.mongo_json_encoder import JSONEncoder
 from functools import wraps
 import bcrypt
-from bcrypt import hashpw, gensalt
 
 # basic setup
 app = Flask(__name__)                       # create flask instance
@@ -13,11 +12,13 @@ mongo = MongoClient('localhost', 27017)     # establish connection to local MDB
 app.db = mongo.develop_database             # specify DB to store data
 api = Api(app)                              # create flask_RESTful API instance
 app.bcrypt_rounds = 12                      # config work factor for fast tests
-user_collection = app.db.users              # access collection of Users
+trip_collection = app.db.trips              # collection to store obj
+user_collection = app.db.users              # collection to store users
 
 
 # check_auth method decides whether user provided valid credentials
 def check_auth(username, password):
+    user_collection = app.db.users          # access collection of Users
     # retrieve User with username provided
     user = user_collection.find_one({'username': username})
 
@@ -58,7 +59,6 @@ class Trip(Resource):
     # POST creates a new Trip instance with waypoints - must sent JSON doc
     def post(self):
         trip = request.json                 # access JSON passed in
-        trip_collection = app.db.trips      # access collection to store obj
         result = trip_collection.insert_one(trip)   # insert JSON doc in coll
         my_trip = trip_collection.find_one(         # retrieve result &
             {'_id': ObjectId(result.inserted_id)})  # fetch inserted doc
@@ -66,7 +66,6 @@ class Trip(Resource):
 
     # GET retrieves a collection of Trips or specific Trip if trip_id specified
     def get(self, trip_id=None):
-        trip_collection = app.db.trips      # ref trip_collection
         # access coll if no trip_id specificed, or specific Trip if provided
         trip = trip_collection.find_one({'_id': ObjectId(trip_id)})
 
@@ -81,8 +80,6 @@ class Trip(Resource):
     # PUT updates a collection of Trips or specific Trip if trip_id specified
     def put(self, trip_id=None):
         trip_update = request.json          # access JSON passed in
-        trip_collection = app.db.trips      # access collection of Trips
-
         # find the trip_id passed in and update using $set
         trip_collection.update_one({'_id': ObjectId(trip_id)},
                                    {'$set': trip_update})
@@ -92,7 +89,6 @@ class Trip(Resource):
 
     # delete a Trip
     def delete(self, trip_id):
-        trip_collection = app.db.trips      # access collection of Trips
         # delete Trip of specified trip_id
         trip_collection.delete_one({'_id': ObjectId(trip_id)})
         # retrieve delted Trip doc
@@ -111,16 +107,19 @@ class Trip(Resource):
 # password) and GET (which requires authentication to retrieve all Trips for
 # a specific User)
 class User(Resource):
+    # POST creates a new User instance & returns ID - must sent JSON doc
     def post(self):
         user = request.json                     # request json doc
-        # user_collection = app.db.users          # collection to store users
-        encoded_pw = user['password'].encode('utf-8')       # encode password
-        hashed_pw = bcrypt.hashpw(encoded_pw,               # hash password
+        encoded_pw = user['password'].encode('utf-8')   # encode password
+        hashed_pw = bcrypt.hashpw(encoded_pw,           # hash password
                                   bcrypt.gensalt(app.bcrypt_rounds))
-        user['password'] = hashed_pw                        # update pasword
-        user_collection.insert_one(user)                    # inserting doc
-        return
+        user['password'] = hashed_pw                    # update pasword
+        result = user_collection.insert_one(user)       # inserting doc
+        my_user = user_collection.find_one(             # retrieve result &
+            {'_id': ObjectId(result.inserted_id)})      # fetch inserted doc
+        return my_user['_id']                           # return user's id
 
+    # GET retrieves all Trips for a user and requires authentication
     @requires_auth
     def get(self):
         resp = jsonify(message=[])          # msg indicates auth went through
