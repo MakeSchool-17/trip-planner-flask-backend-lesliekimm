@@ -99,7 +99,6 @@ class User(Resource):
         @wraps(f)
         def decorated(*args, **kwargs):
             auth = request.authorization        # read auth header
-            print('AUTH HEADER', auth)
             # check_auth with username and password provided and if False
             # returned or no header provided, return 401
             if not auth or not User.check_auth(auth.username, auth.password):
@@ -118,14 +117,11 @@ class User(Resource):
                                   bcrypt.gensalt(app.bcrypt_rounds))
         user['password'] = hashed_pw                        # update pasword
         user_collection.insert_one(user)                    # inserting doc
-
-        print(user)
         return
 
     @requires_auth
     def get(self):
-        message = {'authorization:' 'Authorized!'}
-        resp = jsonify(message)             # msg indicates auth went through
+        resp = jsonify(message=[])          # msg indicates auth went through
         resp.status_code = 200              # set status to 200
         return resp                         # return resp
 

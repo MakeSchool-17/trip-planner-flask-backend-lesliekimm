@@ -3,7 +3,7 @@ import unittest
 import json
 from pymongo import MongoClient
 from base64 import b64encode
-import base64
+
 
 class FlaskrTestCase(unittest.TestCase):
     def setUp(self):
@@ -92,9 +92,16 @@ class FlaskrTestCase(unittest.TestCase):
                                  username='lesliekimm', password='password')),
                                  content_type='application/json')
 
-        # ObjectId('561ec884a5ddcf88c27cc018')
-        header={'Authorization': 'Basic ' + base64.b64encode('lesliekimm:password')}
-        self.app.get('/users/', headers=header)
+        creds_string = "{0}:{1}".format('lesliekimm', 'password')
+        cred_encoded = creds_string.encode('utf-8')
+        cred_b64encoded = b64encode(cred_encoded).decode()
+
+        headers = {'Authorization': 'Basic ' + cred_b64encoded}
+
+        get_response = self.app.get('/users/', headers=headers)
+
+        self.assertEqual(get_response.status_code, 200)
+
 
 if __name__ == '__main__':
     unittest.main()
