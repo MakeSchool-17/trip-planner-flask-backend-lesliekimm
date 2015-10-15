@@ -13,6 +13,41 @@ mongo = MongoClient('localhost', 27017)     # establish connection to local MDB
 app.db = mongo.develop_database             # specify DB to store data
 api = Api(app)                              # create flask_RESTful API instance
 app.bcrypt_rounds = 12                      # config work factor for fast tests
+user_collection = app.db.users              # access collection of Users
+
+
+# check_auth method decides whether user provided valid credentials
+def check_auth(username, password):
+    # retrieve User with username provided
+    user = user_collection.find_one({'username': username})
+
+    # if there is no User, return False, otherwise check credentials
+    if user is None:
+        return False
+    else:
+        encoded_pw = password.encode('utf-8')   # encode password provided
+
+        # compare encoded password with hashed password
+        if bcrypt.hashpw(encoded_pw, user['password']) == user['password']:
+            return True                     # return True if they match
+        else:
+            return False                    # otherwise return False
+
+
+# define wrapper that checks authentication header of an incoming request
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization        # read auth header
+        # check_auth with username and password provided and if False
+        # returned or no header provided, return 401
+        if not auth or not check_auth(auth.username, auth.password):
+            message = {'error': 'Basic Auth Required.'}
+            resp = jsonify(message)         # insert error msg to return
+            resp.status_code = 401          # set status to 401
+            return resp                     # return resp
+        return f(*args, **kwargs)   # if auth success, wrapped func called
+    return decorated
 
 
 # implement REST resources
@@ -76,42 +111,9 @@ class Trip(Resource):
 # password) and GET (which requires authentication to retrieve all Trips for
 # a specific User)
 class User(Resource):
-    # check_auth method decides whether user provided valid credentials
-    def check_auth(username, password):
-        user_collection = app.db.users          # access collection of Users
-        # retrieve User with username provided
-        user = user_collection.find_one({'username': username})
-
-        # if there is no User, return False, otherwise check credentials
-        if user is None:
-            return False
-        else:
-            encoded_pw = password.encode('utf-8')   # encode password provided
-
-            # compare encoded password with hashed password
-            if bcrypt.hashpw(encoded_pw, user['password']) == user['password']:
-                return True                     # return True if they match
-            else:
-                return False                    # otherwise return False
-
-    # define wrapper that checks authentication header of an incoming request
-    def requires_auth(f):
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            auth = request.authorization        # read auth header
-            # check_auth with username and password provided and if False
-            # returned or no header provided, return 401
-            if not auth or not User.check_auth(auth.username, auth.password):
-                message = {'error': 'Basic Auth Required.'}
-                resp = jsonify(message)         # insert error msg to return
-                resp.status_code = 401          # set status to 401
-                return resp                     # return resp
-            return f(*args, **kwargs)   # if auth success, wrapped func called
-        return decorated
-
     def post(self):
         user = request.json                     # request json doc
-        user_collection = app.db.users          # collection to store users
+        # user_collection = app.db.users          # collection to store users
         encoded_pw = user['password'].encode('utf-8')       # encode password
         hashed_pw = bcrypt.hashpw(encoded_pw,               # hash password
                                   bcrypt.gensalt(app.bcrypt_rounds))
