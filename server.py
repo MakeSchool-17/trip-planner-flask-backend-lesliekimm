@@ -4,8 +4,8 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from utils.mongo_json_encoder import JSONEncoder
 from functools import wraps
-from bcrypt import hashpw, gensalt
 import bcrypt
+from bcrypt import hashpw, gensalt
 
 # basic setup
 app = Flask(__name__)                       # create flask instance
@@ -13,35 +13,6 @@ mongo = MongoClient('localhost', 27017)     # establish connection to local MDB
 app.db = mongo.develop_database             # specify DB to store data
 api = Api(app)                              # create flask_RESTful API instance
 app.bcrypt_rounds = 12                      # config work factor for fast tests
-
-
-# check_auth method decides whether user provided valid credentials
-def check_auth(username, password):
-    # THIS IS DUMMY IMPLEMENTATION - REPLACE
-    hashed_pw = hashpw(password, gensalt(log_rounds=12))
-    # if hashed_pw == stored hashed pw
-    return username == 'admin' and password == 'secret'
-
-
-# define wrapper that checks authentication header of an incoming request
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        # first reads auth header by accessing request.authorization
-        auth = request.authorization
-        # checks if header was provided
-        # if header provided, passes deatils to check_auth method
-        # check_auth method decides whether user provided valid credentials
-        # if auth not successful, return 401 response
-        if not auth or not check_auth(auth.username, auth.password):
-            message = {'error': 'Basic Auth Required.'}
-            resp = jsonify(message)
-            resp.status_code = 401
-            return resp
-
-        # if auth successful, wrapped function will be called as usual
-        return f(*args, **kwargs)
-    return decorated
 
 
 # implement REST resources
@@ -105,6 +76,40 @@ class Trip(Resource):
 # password) and GET (which requires authentication to retrieve all Trips for
 # a specific User)
 class User(Resource):
+    # check_auth method decides whether user provided valid credentials
+    def check_auth(username, password):
+        user_collection = app.db.users          # access collection of Users
+        # retrieve User with username provided
+        user = user_collection.find_one({'username': username})
+
+        # if there is no User, return False, otherwise check credentials
+        if user is None:
+            return False
+        else:
+            encoded_pw = password.encode('utf-8')   # encode password provided
+
+            # compare encoded password with hashed password
+            if bcrypt.hashpw(encoded_pw, user['password']) == user['password']:
+                return True                     # return True if they match
+            else:
+                return False                    # otherwise return False
+
+    # define wrapper that checks authentication header of an incoming request
+    def requires_auth(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            auth = request.authorization        # read auth header
+            print('AUTH HEADER', auth)
+            # check_auth with username and password provided and if False
+            # returned or no header provided, return 401
+            if not auth or not User.check_auth(auth.username, auth.password):
+                message = {'error': 'Basic Auth Required.'}
+                resp = jsonify(message)         # insert error msg to return
+                resp.status_code = 401          # set status to 401
+                return resp                     # return resp
+            return f(*args, **kwargs)   # if auth success, wrapped func called
+        return decorated
+
     def post(self):
         user = request.json                     # request json doc
         user_collection = app.db.users          # collection to store users
@@ -112,15 +117,18 @@ class User(Resource):
         hashed_pw = bcrypt.hashpw(encoded_pw,               # hash password
                                   bcrypt.gensalt(app.bcrypt_rounds))
         user['password'] = hashed_pw                        # update pasword
-        result = user_collection.insert_one(user)           # inserting doc
-        # my_user = user_collection.find_one(
-            # {'_id': ObjectId(result.inserted_id)})
+        user_collection.insert_one(user)                    # inserting doc
 
+        print(user)
         return
 
     @requires_auth
-    def get(self, user_id):
-        pass
+    def get(self):
+        message = {'authorization:' 'Authorized!'}
+        resp = jsonify(message)             # msg indicates auth went through
+        resp.status_code = 200              # set status to 200
+        return resp                         # return resp
+
 
 # add REST resource to API by mapping btw routes and resources
 # a route defines a URL that can be called by a client app
