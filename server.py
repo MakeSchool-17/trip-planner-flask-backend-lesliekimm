@@ -127,10 +127,7 @@ class User(Resource):
         return resp                         # return resp
 
 
-# add REST resource to API by mapping btw routes and resources
-# a route defines a URL that can be called by a client app
-# first param is resource we want to map to a specific URL
-# next are collection of endpts
+# add REST resources to API by mapping between routes and resources
 api.add_resource(Trip, '/trips/', '/trips/<string:trip_id>')
 api.add_resource(User, '/users/', '/users/<string:user_id>')
 
