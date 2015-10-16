@@ -84,6 +84,8 @@ class FlaskrTestCase(unittest.TestCase):
 
         del_response = self.app.delete('/trips/'+postedObjectID)
 
+        # A potential way of improving this test is issuing another GET request
+        # with the ID of the deleted object and expecting it to return a 404 status code
         self.assertEqual(del_response.status_code, 200)
 
     # User tests
