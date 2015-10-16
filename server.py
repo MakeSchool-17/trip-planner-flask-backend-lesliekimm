@@ -127,7 +127,7 @@ class User(Resource):
         return resp                         # return resp
 
 
-# add REST resources to API by mapping between routes and resources
+# add REST resources to API by mapping routes and resources
 api.add_resource(Trip, '/trips/', '/trips/<string:trip_id>')
 api.add_resource(User, '/users/', '/users/<string:user_id>')
 
