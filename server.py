@@ -57,6 +57,7 @@ def requires_auth(f):
 # Trip) and DELETE (delete a Trip with waypoints)
 class Trip(Resource):
     # POST creates a new Trip instance with waypoints - must sent JSON doc
+    @requires_auth
     def post(self):
         trip = request.json                 # access JSON passed in
         result = trip_collection.insert_one(trip)   # insert JSON doc in coll

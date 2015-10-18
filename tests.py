@@ -18,9 +18,16 @@ class FlaskrTestCase(unittest.TestCase):
 
     # test Trip POST method
     def test_post(self):
+        # create headers by encoding un:pw and encoding using b64
+        creds_string = "{0}:{1}".format('lesliekimm', 'password')
+        cred_encoded = creds_string.encode('utf-8')
+        cred_b64encoded = b64encode(cred_encoded).decode()
+        # create headers with properly encoded us:pw
+        headers = {'Authorization': 'Basic ' + cred_b64encoded}
+
         # create Trip with a name and empty waypoints array
-        response = self.app.post('/trips/', data=json.dumps(dict(
-            name='San Fran', waypoints=[])),
+        response = self.app.post('/trips/', headers=headers, data=json.dumps(
+            dict(name='San Fran', waypoints=[])),
             content_type='application/json')
 
         # decode the JOSN doc returned which includes _id, name and waypoints
@@ -34,9 +41,16 @@ class FlaskrTestCase(unittest.TestCase):
 
     # test Trip GET method
     def test_get(self):
+        # create headers by encoding un:pw and encoding using b64
+        creds_string = "{0}:{1}".format('lesliekimm', 'password')
+        cred_encoded = creds_string.encode('utf-8')
+        cred_b64encoded = b64encode(cred_encoded).decode()
+        # create headers with properly encoded us:pw
+        headers = {'Authorization': 'Basic ' + cred_b64encoded}
+
         # create Trip with a name and empty waypoitns array
-        response = self.app.post('/trips/', data=json.dumps(dict(
-            name='Cross country', waypoints=[])),
+        response = self.app.post('/trips/', headers=headers, data=json.dumps(
+            dict(name='Cross country', waypoints=[])),
             content_type='application/json')
 
         # decode JSON doc returned and get _id
@@ -68,9 +82,16 @@ class FlaskrTestCase(unittest.TestCase):
 
     # test Trip PUT method
     def test_put(self):
+        # create headers by encoding un:pw and encoding using b64
+        creds_string = "{0}:{1}".format('lesliekimm', 'password')
+        cred_encoded = creds_string.encode('utf-8')
+        cred_b64encoded = b64encode(cred_encoded).decode()
+        # create headers with properly encoded us:pw
+        headers = {'Authorization': 'Basic ' + cred_b64encoded}
+
         # create Trip with a name and empty waypoints array
-        response = self.app.post('/trips/', data=json.dumps(dict(
-            name='San Fran', waypoints=[])),
+        response = self.app.post('/trips/', headers=headers, data=json.dumps(
+            dict(name='San Fran', waypoints=[])),
             content_type='application/json')
 
         # decode JSON doc returned and get _id
@@ -91,10 +112,17 @@ class FlaskrTestCase(unittest.TestCase):
 
     # test Trip DELETE method
     def test_delete(self):
+        # create headers by encoding un:pw and encoding using b64
+        creds_string = "{0}:{1}".format('lesliekimm', 'password')
+        cred_encoded = creds_string.encode('utf-8')
+        cred_b64encoded = b64encode(cred_encoded).decode()
+        # create headers with properly encoded us:pw
+        headers = {'Authorization': 'Basic ' + cred_b64encoded}
+
         # create Trip with a name and waypoints array
-        response = self.app.post('/trips/', data=json.dumps(dict(
-            name='San Fran',
-            waypoints=['russian hill', 'pac heights', 'sunset'])),
+        response = self.app.post('/trips/', headers=headers, data=json.dumps(
+            dict(name='San Fran',
+                 waypoints=['russian hill', 'pac heights', 'sunset'])),
             content_type='application/json')
 
         # decode JSON doc returned and get _id
@@ -126,6 +154,24 @@ class FlaskrTestCase(unittest.TestCase):
 
         # perform assertion tests
         self.assertEqual(get_response.status_code, 200)
+
+    def test_user_trip(self):
+        user_resp = self.app.post('/users/', data=json.dumps(dict(
+                                  username='lesliekimm', password='password')),
+                                  content_type='application/json')
+        user_response_JSON = json.loads(user_resp.data.decode())
+        user_id = user_response_JSON[:]
+
+        # create headers by encoding un:pw and encoding using b64
+        creds_string = "{0}:{1}".format('lesliekimm', 'password')
+        cred_encoded = creds_string.encode('utf-8')
+        cred_b64encoded = b64encode(cred_encoded).decode()
+        # create headers with properly encoded us:pw
+        headers = {'Authorization': 'Basic ' + cred_b64encoded}
+
+        response = self.app.post('/trips/', headers=headers, data=json.dumps(
+            dict(name='San Fran', waypoints=[], uID=user_id)),
+            content_type='application/json')
 
 
 if __name__ == '__main__':
