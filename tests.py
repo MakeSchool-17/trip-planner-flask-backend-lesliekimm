@@ -184,19 +184,18 @@ class FlaskTestCase(unittest.TestCase):
 
         # create Trip object w/ name, waypoints and user_id
         response = self.app.post('/trips/', headers=headers, data=json.dumps(
-            dict(name='South', waypoints=[], uID=user_id)),
+            dict(name='West Coast', waypoints=[], uID=user_id)),
             content_type='application/json')
 
         # decode JSON doc returned and get _id
         postResponseJSON = json.loads(response.data.decode())
         postedObjectID = postResponseJSON['_id']
 
-        # DELETE Trip of specified _id
         del_response = self.app.delete('/trips/'+postedObjectID)
-
-        # perform assertion tests
         self.assertEqual(del_response.status_code, 200)
 
+        get_response = self.app.get('/trips/'+postedObjectID)
+        self.assertEqual(get_response.status_code, 404)
 
 if __name__ == '__main__':
     unittest.main()
