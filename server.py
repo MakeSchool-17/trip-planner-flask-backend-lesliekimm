@@ -64,16 +64,14 @@ class Trip(Resource):
         return my_trip                              # return doc to client
 
     # GET retrieves a coll of Trips of specific Trip if trip_id specified
+    @requires_auth
     def get(self, trip_id=None):
+        auth = request.authorization
         # if no trip_id specified, return trips collection
         if trip_id is None:
-            # x = []
-            # for trip in trips.find():
-            #     x.append(trip)
-            # response = jsonify(data=x)
-            # response.status_code = 200
-            # TODO: update this to return collection
-            return None
+            found_trips = trips.find({'username': auth.username})
+            trips_to_return = list(found_trips)
+            return trips_to_return
         # otherwise, return specified trip
         else:
             # access specified trip_id passed in
@@ -89,6 +87,7 @@ class Trip(Resource):
                 return trip
 
     # PUT updates a collection of Trips or specific Trip if trip_id specified
+    @requires_auth
     def put(self, trip_id=None):
         trip_update = request.json                  # access JSON passed in
         # find the trip_id passed in and update using $set
@@ -99,6 +98,7 @@ class Trip(Resource):
         return updated                              # return updated Trip doc
 
     # delete a Trip
+    @requires_auth
     def delete(self, trip_id):
         # delete Trip of specified trip_id
         trips.delete_one({'_id': ObjectId(trip_id)})
