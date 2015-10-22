@@ -56,7 +56,9 @@ class Trip(Resource):
     # and must send in header and JSON doc
     @requires_auth
     def post(self):
+        auth = request.authorization
         trip = request.json                         # access JSON passed in
+        trip['username'] = auth.username            # add UN to doc
         result = trips.insert_one(trip)             # insert JSON doc in coll
         # retrieve result & fetch inserted doc
         my_trip = trips.find_one({'_id': ObjectId(result.inserted_id)})
@@ -74,7 +76,8 @@ class Trip(Resource):
         # otherwise, return specified trip
         else:
             # access specified trip_id passed in
-            trip = trips.find_one({'_id': ObjectId(trip_id)})
+            trip = trips.find_one({'_id': ObjectId(trip_id),
+                                   'username': auth.username})
 
             # if trip isn't found, return 404 error code
             if trip is None:
@@ -88,10 +91,12 @@ class Trip(Resource):
     # PUT updates a collection of Trips or specific Trip if trip_id specified
     @requires_auth
     def put(self, trip_id=None):
+        auth = request.authorization
         trip_update = request.json                  # access JSON passed in
+        trip_update['username'] = auth.username
         # find the trip_id passed in and update using $set
-        trips.update_one({'_id': ObjectId(trip_id)},
-                                   {'$set': trip_update})
+        trips.update_one({'_id': ObjectId(trip_id),
+                          'username': auth.username}, {'$set': trip_update})
         # retrieve the updated Trip
         updated = trips.find_one({'_id': ObjectId(trip_id)})
         return updated                              # return updated Trip doc
@@ -99,10 +104,13 @@ class Trip(Resource):
     # delete a Trip
     @requires_auth
     def delete(self, trip_id):
+        auth = request.authorization
         # delete Trip of specified trip_id
-        trips.delete_one({'_id': ObjectId(trip_id)})
+        trips.delete_one({'_id': ObjectId(trip_id),
+                          'username': auth.username})
         # retrieve delted Trip doc
-        deleted_trip = trips.find_one({'_id': ObjectId(trip_id)})
+        deleted_trip = trips.find_one({'_id': ObjectId(trip_id),
+                                       'username': auth.username})
 
         # return 404 if deleted_trip is not None, else return deleted_trip
         if deleted_trip is not None:
