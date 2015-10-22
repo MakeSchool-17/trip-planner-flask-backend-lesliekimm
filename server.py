@@ -27,8 +27,7 @@ def check_auth(username, password):
         if bcrypt.hashpw(encoded_pw, user['password']) == user['password']:
             return True                     # return True if passwords match
         else:
-            print('ERROR, password authentication is not working')
-            return True                    # otherwise return False
+            return False                    # otherwise return False
 
 
 # decorator function that checks authenticaiton header of an incoming request
@@ -117,13 +116,28 @@ class Trip(Resource):
 class User(Resource):
     def post(self):
         user = request.json                             # access JSON passed in
-        encoded_pw = user['password'].encode('utf-8')   # encode password
-        hashed_pw = bcrypt.hashpw(encoded_pw,           # hash password
-                                  bcrypt.gensalt(app.bcrypt_rounds))
-        user['password'] = hashed_pw                    # update password
-        result = users.insert_one(user)                 # insert doc in coll
-        my_user = users.find_one({'_id': ObjectId(result.inserted_id)})
-        return my_user['_id']                           # returns user id
+
+        if (user['username'] is None or user['password'] is None):
+            message = {'error': 'Request requires username and password.'}
+            resp = jsonify(message)                 # insert error msg
+            resp.status_code = 400                  # set status to 401
+            return resp
+
+        my_user = users.find_one({'username': user['username']})
+
+        if my_user is not None:
+            message = {'error': 'Username already in use'}
+            resp = jsonify(message)
+            resp.satus_code = 400
+            return resp
+        else:
+            encoded_pw = user['password'].encode('utf-8')   # encode password
+            hashed_pw = bcrypt.hashpw(encoded_pw,           # hash password
+                                      bcrypt.gensalt(app.bcrypt_rounds))
+            user['password'] = hashed_pw                    # update password
+            result = users.insert_one(user)                 # insert doc in coll
+            my_user = users.find_one({'_id': ObjectId(result.inserted_id)})
+            return my_user['_id']                           # returns user id
 
     # GET retrieves all Trips for a user and requires authentication
     @requires_auth
