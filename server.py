@@ -135,9 +135,7 @@ class User(Resource):
             hashed_pw = bcrypt.hashpw(encoded_pw,           # hash password
                                       bcrypt.gensalt(app.bcrypt_rounds))
             user['password'] = hashed_pw                    # update password
-            result = users.insert_one(user)                 # insert doc in coll
-            my_user = users.find_one({'_id': ObjectId(result.inserted_id)})
-            return my_user['_id']                           # returns user id
+            users.insert_one(user)                          # insert doc
 
     # GET retrieves all Trips for a user and requires authentication
     @requires_auth
